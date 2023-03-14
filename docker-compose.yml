@@ -1,0 +1,42 @@
+version: "3.9"
+
+services:
+  documentupload:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: >
+      bash -c "python manage.py makemigrations &&
+               python manage.py migrate &&
+               python manage.py runserver 0.0.0.0:8080"
+    environment:
+    - HOST_IP=192.168.3.38
+    volumes:
+      - docdata:/docmument
+      - media:/media
+    ports:
+      - 8003:8080
+    depends_on:
+      - postgres
+  
+  postgres:
+    image: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - 5435:5432
+  
+  adminer:
+    image: adminer
+    ports:
+      - 8091:8080
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  docdata:
+  media:
