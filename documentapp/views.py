@@ -1,12 +1,17 @@
 from rest_framework import generics, mixins
 from .models import DocumentUpload, RequestSign
-from .serializers import DocumentSerializer, RequestSignSerializer, RequestSignSerializerRequest
+from .serializers import DocumentSerializer, RequestSignSerializerTitle, DocumentSerializerUpload, RequestSignSerializer, RequestSignSerializerRequest
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 import os
 import requests
+import uuid
+import random
+from django.conf import settings
+
 
 
 class RequestApiDestroy(generics.RetrieveDestroyAPIView):
@@ -85,7 +90,14 @@ class RequestApi(generics.GenericAPIView, mixins.ListModelMixin):
         return Response(response_data, status=status.HTTP_200_OK)
 
 
+class UserRequestSignsView(generics.ListAPIView):
+    serializer_class = RequestSignSerializerTitle
 
+    def get_queryset(self):
+        user_id = self.request.user.id
+        print(user_id)
+        
+        return RequestSign.objects.filter(document_id__user_id=user_id)
 
 
 
@@ -99,30 +111,101 @@ class requestList(generics.ListAPIView):
 
 class DocumentList(generics.ListCreateAPIView):
     queryset = DocumentUpload.objects.all()
-    serializer_class = DocumentSerializer
+    serializer_class = DocumentSerializerUpload
+
+
+
+class DocumentList(generics.ListCreateAPIView):
+    queryset = DocumentUpload.objects.all()
+    serializer_class = DocumentSerializerUpload
+
+    def perform_create(self, serializer):
+        # Save the new DocumentUpload instance
+        instance = serializer.save()
+        # Get the ID of the new instance
+        id = instance.id
+        action = 'Document Uploaded'
+        host_ip = os.environ.get('HOST_IP')
+        # Save the file type in 'filetype' field separately
+        filetype = os.path.splitext(instance.fileDoc.name)[1].lower()
+        title = os.path.splitext(instance.fileDoc.name)[0].split("/")[1]
+        instance.title = title
+        instance.filetype = filetype
     
-    def create(self, request, *args, **kwargs):
-        print(request.data)
-        return super().create(request, *args, **kwargs)
+        # Save the file in a directory named after the user_id
+        user_id = self.request.data['user_id']
+        directory = os.path.join(settings.MEDIA_ROOT, str(user_id))
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        file_path = os.path.join(directory, instance.fileDoc.name.split('/')[-1])
+        with open(file_path, 'wb+') as destination:
+            for chunk in instance.fileDoc.chunks():
+                destination.write(chunk)
+        instance.fileDoc.name = os.path.join(str(user_id), instance.fileDoc.name.split('/')[-1])
+    
+        instance.save()
+        timestamp_data = {'action': action, 'owner': user_id, 'document_id': id}
+        timestamp_url = 'http://' + str(host_ip) + ':8001/api/createDoc'
+        response = requests.post(timestamp_url, data=timestamp_data)
 
 
-class DocumentCRUD(generics.RetrieveUpdateDestroyAPIView):
+
+
+class DocApiDestroy(generics.RetrieveUpdateDestroyAPIView):
     queryset = DocumentUpload.objects.all()
     serializer_class = DocumentSerializer
 
-class DocumentByTitle(generics.RetrieveAPIView):
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        # Serialize instance and print the data
+        serialized_data = self.serializer_class(instance).data
+        self.perform_destroy(instance)
+
+        action = 'Document Deleted'
+        host_ip = os.environ.get('HOST_IP')
+        timestamp_data = {'action': action, 'owner': serialized_data['owner'], 'document_id': serialized_data['id']}
+        timestamp_url = 'http://' + str(host_ip) + ':8001/api/createDoc'
+        response = requests.post(timestamp_url, data=timestamp_data)
+        
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        partial = kwargs.pop('partial', False)
+        allowed_fields = ['description', 'title', 'signed_status', 'privacy']
+        data = {k: v for k, v in request.data.items() if k in allowed_fields}
+        serializer = self.get_serializer(instance, data=data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        action = 'Document Updated'
+        host_ip = os.environ.get('HOST_IP')
+        timestamp_data = {'action': action, 'owner': instance.owner, 'document_id': instance.id}
+        timestamp_url = 'http://' + str(host_ip) + ':8001/api/createDoc'
+        response = requests.post(timestamp_url, data=timestamp_data)
+        
+        return Response(serializer.data)
+
+
+
+    
+        
+
+class DocumentApiUpdate(generics.RetrieveUpdateAPIView):
     queryset = DocumentUpload.objects.all()
     serializer_class = DocumentSerializer
-    lookup_field = 'title'
+
+    
+
+
+
+
 
 class DocumentAll(generics.ListAPIView):
     queryset = DocumentUpload.objects.all()
     serializer_class = DocumentSerializer
 
-class DocumentDetail(generics.RetrieveAPIView):
-    queryset = DocumentUpload.objects.all()
-    serializer_class = DocumentSerializer
-    lookup_field = 'id'
     
 
 
@@ -130,7 +213,8 @@ class DocumentDetail(generics.RetrieveAPIView):
 class DownloadDocumentView(APIView):
     def get(self, request, pk, *args, **kwargs):
         document = get_object_or_404(DocumentUpload, pk=pk)
-        file = document.file
-        response = Response(file.read(), content_type=file.content_type)
-        response['Content-Disposition'] = f'attachment; filename="{document.title}"'
+        file = document.fileDoc
+        contentType= str(file).split(".")
+        response = HttpResponse(file.read(), content_type=contentType[1])
+        response['Content-Disposition'] = f'attachment; filename="{document.title}.{contentType[1]}"'
         return response

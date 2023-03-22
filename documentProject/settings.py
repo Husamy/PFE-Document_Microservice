@@ -42,6 +42,19 @@ INSTALLED_APPS = [
     'corsheaders',
 
 ]
+
+'''REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTTokenUserAuthentication',
+    )
+}
+
+SIMPLE_JWT = {"SIGNING_KEY": "5ahp8kseKOVB_w"}
+'''
+
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
 DATABASES = {
@@ -72,7 +85,6 @@ MIDDLEWARE = [
 
 
 CORS_ORIGIN_ALLOW_ALL = True
-CORS_ALLOW_HEADERS = '*'
 CORS_ALLOW_METHODS = '*'
 
 ROOT_URLCONF = 'documentProject.urls'
@@ -94,7 +106,8 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'documentProject.wsgi.application'
-
+ALLOWED_HOSTS = ['*']
+CORS_ORIGIN_ALLOW_ALL = True
 
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
