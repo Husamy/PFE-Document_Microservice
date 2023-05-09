@@ -43,7 +43,7 @@ INSTALLED_APPS = [
 
 ]
 
-'''REST_FRAMEWORK = {
+REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
@@ -53,7 +53,7 @@ INSTALLED_APPS = [
 }
 
 SIMPLE_JWT = {"SIGNING_KEY": "5ahp8kseKOVB_w"}
-'''
+
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'

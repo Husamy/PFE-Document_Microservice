@@ -10,7 +10,7 @@ services:
                python manage.py migrate &&
                python manage.py runserver 0.0.0.0:8080"
     environment:
-    - HOST_IP=192.168.3.38
+    - HOST_IP=172.25.6.208
     volumes:
       - docdata:/docmument
       - media:/media
