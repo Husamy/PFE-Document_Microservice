@@ -11,9 +11,9 @@ def user_directory_path(instance, filename):
     return 'user_{0}/{1}'.format(instance.user_id, filename)
     
 class DocumentUpload(models.Model):
-    title = models.CharField(max_length=30)
-    owner = models.EmailField(max_length=30)
-    description = models.CharField(max_length=300)
+    title = models.CharField(max_length=100)
+    owner = models.EmailField(max_length=50)
+    description = models.CharField(max_length=500)
     signed_status = models.CharField(max_length=20,default='Not Signed')
     privacy = models.CharField(max_length=7,default='Private')
     filetype = models.CharField(max_length=20)

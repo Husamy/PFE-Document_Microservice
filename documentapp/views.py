@@ -234,6 +234,11 @@ class RequestApi(generics.GenericAPIView, mixins.ListModelMixin):
     queryset = RequestSign.objects.all()
     permission_classes=[IsUser,]
     
+    
+    def get_queryset(self):
+        return super().get_queryset().filter(owner=self.request.user.email)
+        
+    
     def get(self, request, *args, **kwargs):
         # Override the list method to retrieve the associated document for each request object
         queryset = self.filter_queryset(self.get_queryset())  # Get the filtered queryset
