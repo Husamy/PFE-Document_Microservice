@@ -236,7 +236,50 @@ class RequestApi(generics.GenericAPIView, mixins.ListModelMixin):
     
     
     def get_queryset(self):
-        return super().get_queryset().filter(owner=self.request.user.email)
+        host_ip = os.environ.get('HOST_IP')
+        id = self.request.user.id
+        print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++=")
+        print(self.request)
+        print('id: ' + str(id))
+        token = self.request.META.get('HTTP_AUTHORIZATION', '').split(' ')[1]
+        headers = {'Authorization': f'Bearer {token}'}
+        auth_url = 'http://' + str(host_ip) + ':8002/api/users/'+ str(id)
+        response = requests.get(auth_url, headers=headers)
+        response_json = json.loads(response.content.decode('utf-8'))
+        print('response auth: ' + str(response_json))
+        user_organisation = response_json['organisation']
+        print('user_organisation: ' + str(user_organisation))
+        if user_organisation is None:
+            queryset = super().get_queryset().filter(owner=self.request.user.email)
+            return queryset
+        # get organisation owner
+        org_url = 'http://' + str(host_ip) + ':8002/api/organisation/create/'
+        response = requests.get(url=org_url, headers=headers)
+        print('response: ' + str(response))
+        response_json1 = json.loads(response.content.decode('utf-8'))
+        print('response org: ' + str(response_json1))
+        org_data = response_json1[0]
+        print('org_data: ' + str(org_data))
+        owner=org_data['owner']
+        print('owner: ' + str(owner))
+        members=org_data['members']
+        print('members: ' +str(members))
+        print(members)
+        if response_json['email'] == owner:
+            org_url_member = 'http://' + str(host_ip) + ':8002/api/organisation/users/'
+            response_members = requests.get(url=org_url_member, headers=headers)
+            print('response: ' + str(response_members))
+            response_json2 = json.loads(response_members.content.decode('utf-8'))
+            print('response org: ' + str(response_json2))
+            members_email = []
+            for i in response_json2:
+                members_email.append(i['email'])
+            org_data_members = response_json2[0]
+            print('org_data: ' + str(org_data_members))
+            queryset = super().get_queryset().filter(owner__in=members_email)
+        else:
+            queryset = super().get_queryset().filter(owner=self.request.user.email)
+        return queryset
         
     
     def get(self, request, *args, **kwargs):
@@ -336,9 +379,9 @@ class DocumentList(generics.ListCreateAPIView):
         print('members: ' +str(members))
         print(members)
         if response_json['email'] == owner:
-            queryset = queryset.filter(Q(user_id__in=members) | Q(user_id=id))
-        elif id in members:
             queryset = queryset.filter(user_id__in=members)
+        elif id in members:
+            queryset = (queryset.filter(user_id__in=members, privacy="Public") | queryset.filter(user_id=id)).distinct()
         else:
             queryset = queryset.filter(user_id=id)
         
