@@ -1,6 +1,6 @@
 from rest_framework import generics, mixins
 from .models import DocumentUpload, RequestSign
-from .serializers import DocumentSerializer, RequestUpdateSerializer, RequestSignSerializerTitle, DocumentSerializerUpload, RequestSignSerializer, RequestSignSerializerRequest
+from .serializers import DocumentSerializer, DocumentSerializerUpdateDestroy, RequestUpdateSerializer, RequestSignSerializerTitle, DocumentSerializerUpload, RequestSignSerializer, RequestSignSerializerRequest
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.http import HttpResponse
@@ -406,9 +406,11 @@ class DocumentList(generics.ListCreateAPIView):
         # Save the file in a directory named after the user_id
         user_id = self.request.user.id
         directory = os.path.join(settings.MEDIA_ROOT, str(user_id))
+        print(directory)
         if not os.path.exists(directory):
             os.makedirs(directory)
         file_path = os.path.join(directory, instance.fileDoc.name.split('/')[-1])
+        print(file_path)
         with open(file_path, 'wb') as destination:
             buffer_size = 8192  # 8KB buffer size
             while True:
@@ -416,6 +418,7 @@ class DocumentList(generics.ListCreateAPIView):
                 if not data:
                     break
                 destination.write(data)
+                print(destination)
         instance.save()  # <--- save the updated instance
 
 
@@ -458,7 +461,7 @@ class DocContent (generics.RetrieveAPIView):
 
 class DocApiDestroy(generics.RetrieveUpdateDestroyAPIView):
     queryset = DocumentUpload.objects.all()
-    serializer_class = DocumentSerializer
+    serializer_class = DocumentSerializerUpdateDestroy
     permission_classes=[IsUser,]
 
     
@@ -512,7 +515,7 @@ class DocumentAll(generics.ListAPIView):
 
 
 class DownloadDocumentView(APIView):
-    permission_classes=[IsUser,]
+
     def get(self, request, pk, *args, **kwargs):
         document = get_object_or_404(DocumentUpload, pk=pk)
         file = document.fileDoc

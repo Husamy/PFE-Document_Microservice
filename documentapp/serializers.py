@@ -4,6 +4,13 @@ import os
 import json
 import requests
 
+class DocumentSerializerUpdateDestroy(serializers.ModelSerializer):
+    class Meta:
+        model = DocumentUpload
+        fields = ('id', 'title', 'description', 'privacy')
+
+
+
 class DocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentUpload
